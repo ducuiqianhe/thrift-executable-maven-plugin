@@ -10,6 +10,8 @@ import org.apache.maven.project.MavenProject;
 import org.apache.commons.io.IOUtils;
 
 import java.io.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 
 @Mojo(name="getThriftExecutable")
@@ -23,26 +25,15 @@ public class ThriftExeMojo extends AbstractMojo {
     @Parameter(defaultValue = "${os.detected.classifier}", required = true)
     private String osVersion;
 
-    @Parameter(defaultValue = "${project.build.directory}", required = true)
-    private String buildDirectory;
+    @Parameter(property="outputDirectory")
+    private String outputDirectory;
 
-    // TODO: add custom output directory
-//    @Parameter(property="outputDirectory")
-//    private String outputDirectory = buildDirectory;
-
-    public void execute() throws MojoExecutionException, MojoFailureException {
+    public void execute() {
         log.info( "Fetching thrift executable version: " + osVersion + ", for artifact " + project.getArtifactId() + ", version " + project.getVersion());
-        log.info(buildDirectory);
-
-        // get corresponding executable resource
-        InputStream inputStream = getClass().getClassLoader().getResourceAsStream("thrift-" + osVersion + ".exe");
-
-
-        // unzip
 
         // create output file
-
-        final String depsDescriptor = "thrift-" + osVersion + ".exe";
+        final String depsDescriptor = outputDirectory == null ? "src/main/resources/thrift-" + osVersion + ".exe" : outputDirectory + "/thrift-" + osVersion + ".exe";
+        log.info(depsDescriptor);
         File descriptorFile = new File(depsDescriptor);
 
         if (!descriptorFile.exists()) {
@@ -51,17 +42,39 @@ public class ThriftExeMojo extends AbstractMojo {
             } catch (IOException e) {
                 log.info("Error encountered: " + e);
             }
+        } else {
+            return;
+        }
+
+        // get corresponding executable resource
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream("thrift-" + osVersion + ".zip");
+        InputStream thriftStream = null;
+        try {
+            File file = getFileFromInputStream(inputStream);
+            ZipFile zipFile = new ZipFile(file);
+            ZipEntry zipEntry = zipFile.getEntry("thrift-" + osVersion + ".exe");
+            thriftStream = zipFile.getInputStream(zipEntry);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
         // write to output file
         try {
             final FileOutputStream fos = new FileOutputStream(descriptorFile);
-            IOUtils.copy(inputStream,fos);
+            if (thriftStream != null) {
+                IOUtils.copy(thriftStream,fos);
+            }
             fos.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
 
-
+    private File getFileFromInputStream(InputStream inputStream) throws IOException {
+        File file = File.createTempFile("artifact-", ".tmp");
+        OutputStream jarOutStream = new FileOutputStream(file);
+        IOUtils.copy(inputStream, jarOutStream);
+        file.deleteOnExit();
+        return file;
     }
 }
