@@ -1,7 +1,11 @@
 # Thrift-executable-maven-plugin
 Maven plugin for auto downloading binary thrift executable. Needed to be used together with maven-thrift-plugin (https://mvnrepository.com/artifact/org.apache.thrift.tools/maven-thrift-plugin)
 
+Thrift is using local binary executable for code generation, which can be troublesome for projects run in different environment. This plugin can auto choose and download the correct version of executable based on running machine. 
+
 Currenly supporting two os versions: windows-x86_64, linux-x86_64
+
+Thrift version: 0.12.0
 
 ### Sample usage
 ```xml
